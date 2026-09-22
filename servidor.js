@@ -40,8 +40,10 @@ app.post("/veiculos", (req, res) => {
   }
 
   if (
-    VEICULOS.some((v) => // retorna um metodo booleano (True, False)
-      v.placa === placaNormalizada
+    VEICULOS.some(
+      (
+        v, // retorna um metodo booleano (True, False)
+      ) => v.placa === placaNormalizada,
     )
   ) {
     return res.status(409).json({
@@ -54,7 +56,7 @@ app.post("/veiculos", (req, res) => {
     placa: placaNormalizada,
     modelo: modelo.trim(),
     cor: cor.trim(),
-    entrada: new Date().toLocaleDateString("pt-br"),
+    entrada: new Date().toISOString("pt-br"),
   };
 
   VEICULOS.push(veiculo);
@@ -63,15 +65,47 @@ app.post("/veiculos", (req, res) => {
 });
 
 app.get("/veiculos", (req, res) => {
-    res.status(200).json({total: VEICULOS.length, VEICULOS});
-})
+  res.status(200).json({ total: VEICULOS.length, VEICULOS });
+});
 
 app.get("/veiculos/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const veiculo = VEICULOS.find((v) => v.id === id);
 
-})
+  if (!veiculo) return res.status(404).json({ msg: "Veículo não encontrado" });
 
-app.get("/vagas", (req, res) => {
+  return res.json(veiculo);
+});
 
+app.get("/vagas", (req, res) => { //endpoint "/vagas"
+  res.status(200).json({
+    capacidade: CAPACIDADE,
+    ocupadas: VEICULOS.length,
+    disponiveis: CAPACIDADE - VEICULOS.length,
+  });
+});
+
+function calcularValor(entrada, saida = new Date()) {
+  const inicio = new Date(entrada);
+  const tempoMs = saida.getTime() - inicio.getTime();
+
+  const horas = Math.max(1, Math.ceil(tempoMs / (1000 * 60 * 60)));
+  const valor = PRECO_PRIMEIRA_HORA + (horas - 1) * PRECO_HORA_ADICIONAL;
+
+
+  return { horasCobradas: horas, valor };
+}
+
+app.get("/veiculos/:id/valor", (req, res) => {
+    const veiculo = VEICULOS.find((v) => v.id === Number(req.params.id))
+
+    if(!veiculo) return res.status(404).json({msg: "Veiculos não encontrado"});
+
+    return res.json({
+    placa: veiculo.placa,
+    entrada: veiculo.entrada,
+    ...calcularValor(veiculo.entrada)
+    })
 })
 
 app.listen(PORTA, () => {
